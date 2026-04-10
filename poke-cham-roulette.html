@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ポケモンチャンピオンズ 内定ポケモンルーレット</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* ルーレットのアニメーション用スタイル */
+    @keyframes slot-spin {
+      0% { transform: translateY(-10px); opacity: 0.5; }
+      50% { transform: translateY(0); opacity: 1; }
+      100% { transform: translateY(10px); opacity: 0.5; }
+    }
+    .spinning {
+      animation: slot-spin 0.1s linear infinite;
+    }
+    
+    /* 画像のフワッと表示アニメーション */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.4s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans p-4 md:p-8">
+
+  <div class="max-w-3xl mx-auto space-y-6">
+    
+    <!-- ヘッダー -->
+    <header class="text-center space-y-2">
+      <h1 class="text-3xl md:text-4xl font-extrabold text-blue-600 tracking-tight">ポケモンチャンピオンズ<br class="md:hidden"> ルーレット</h1>
+      <p class="text-slate-500 text-sm md:text-base">内定ポケモンからランダムに1匹を選びます</p>
+    </header>
+
+    <!-- ルーレット画面 -->
+    <div class="bg-white rounded-2xl shadow-lg p-6 md:p-12 text-center relative overflow-hidden">
+      <!-- 装飾 -->
+      <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-500 via-blue-500 to-yellow-500"></div>
+      
+      <div class="mb-8">
+        <p class="text-sm text-slate-400 font-bold mb-2">RESULT</p>
+        
+        <!-- 結果表示エリア (高さを固定してボタンのガタつきを防止) -->
+        <div class="h-[24rem] sm:h-[20rem] py-6 flex flex-col items-center justify-center bg-slate-50 rounded-xl border-2 border-slate-200 relative overflow-hidden px-4">
+          
+          <!-- 画像表示領域 (メガシンカも横に並べる) -->
+          <div id="imageWrapper" class="flex flex-row items-end justify-center gap-4 md:gap-8 mb-4 flex-wrap w-full min-h-[120px]">
+            <!-- 回転中や初期状態に表示する「？」 -->
+            <div class="flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 bg-slate-200 rounded-full text-4xl text-slate-400 font-bold shadow-inner">
+              ?
+            </div>
+          </div>
+
+          <div class="flex flex-col items-center mt-2">
+            <span id="resultNo" class="text-lg md:text-xl font-bold text-slate-400 select-none transition-colors">
+              No.---
+            </span>
+            <span id="resultName" class="text-3xl md:text-4xl font-black text-slate-700 select-none">
+              ？？？
+            </span>
+          </div>
+        </div>
+        
+        <!-- 育成論リンク（スペースを常に確保し、ガタつきを防ぐ） -->
+        <div class="h-14 mt-4 w-full">
+          <div id="theoryLinkWrapper" class="h-full flex flex-col items-center justify-center gap-1 opacity-0 transition-opacity duration-500 invisible">
+            <a id="theoryLink" href="#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-bold bg-blue-50 px-4 py-2 rounded-full transition-colors border border-blue-200 hover:bg-blue-100 text-sm md:text-base">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              <span>育成論を見る (ポケモン徹底攻略)</span>
+            </a>
+            <span class="text-xs text-slate-400 font-medium">※リンク先は過去作(SV)の育成論です</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ボタンを1つに統合し、色とテキストを切り替える -->
+      <div class="flex justify-center h-16">
+        <button id="actionBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-12 rounded-full text-xl transition-colors shadow-md transform hover:scale-105 active:scale-95 w-full sm:w-auto min-w-[200px]">
+          スタート！
+        </button>
+      </div>
+    </div>
+
+    <!-- 設定・リスト入力画面 -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        ポケモンのリスト設定
+      </h2>
+      
+      <div class="mb-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+          <p class="text-sm text-slate-600 font-medium">
+            現在登録されているポケモン: <span id="pokemonCount" class="font-bold text-blue-600 text-lg">0</span> 匹
+          </p>
+          <div class="flex gap-2">
+            <button id="resetBtn" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-md transition-colors border border-slate-300 font-medium shadow-sm">デフォルトに戻す</button>
+            <button id="clearBtn" class="text-xs bg-red-50 hover:bg-red-100 text-red-600 py-1.5 px-3 rounded-md transition-colors border border-red-200 font-medium shadow-sm">すべてクリア</button>
+          </div>
+        </div>
+        
+        <!-- 登録されているポケモンを視覚的に表示 -->
+        <div id="pokemonTags" class="flex flex-wrap gap-1.5 max-h-56 overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-lg shadow-inner">
+          <!-- JSで生成されるバッジがここに入る -->
+        </div>
+      </div>
+
+      <details class="group bg-white border border-slate-200 rounded-lg open:shadow-sm">
+        <summary class="flex cursor-pointer items-center justify-between p-4 font-medium text-slate-700 hover:bg-slate-50 transition-colors rounded-lg">
+          <span class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+            高度な設定：テキストで一括追加・編集 (コピペ用)
+          </span>
+          <span class="transition group-open:rotate-180">
+            <svg fill="none" height="24" shape-rendering="geometricPrecision" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+          </span>
+        </summary>
+        <div class="p-4 border-t border-slate-200 bg-slate-50/50">
+          <p class="text-xs text-slate-500 mb-2">※yakkun.comのページから図鑑番号とポケモンの名前をコピーして貼り付けてください。1行に「番号 名前」と繋がっていても自動で整理されます。</p>
+          <textarea id="pokemonInput" rows="6" class="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow mb-3" placeholder="001 フシギダネ&#10;002 フシギソウ&#10;..."></textarea>
+          <div class="flex items-center">
+            <button id="updateListBtn" class="bg-slate-800 hover:bg-slate-900 text-white py-2 px-6 rounded-lg text-sm font-medium transition-colors shadow-sm">
+              テキストの内容でリストを上書きする
+            </button>
+            <span id="updateMessage" class="text-sm text-green-600 ml-3 opacity-0 transition-opacity duration-300 font-medium">リストを更新しました！</span>
+          </div>
+        </div>
+      </details>
+    </div>
+
+  </div>
+
+  <script>
+    // --- 初期データ ---
+    const defaultPokemon = [
+      { no: "003", name: "フシギバナ" }, { no: "003", name: "メガフシギバナ" },
+      { no: "006", name: "リザードン" }, { no: "006", name: "メガリザードンX" }, { no: "006", name: "メガリザードンY" },
+      { no: "009", name: "カメックス" }, { no: "009", name: "メガカメックス" },
+      { no: "015", name: "スピアー" }, { no: "015", name: "メガスピアー" },
+      { no: "018", name: "ピジョット" }, { no: "018", name: "メガピジョット" },
+      { no: "024", name: "アーボック" }, { no: "025", name: "ピカチュウ" },
+      { no: "026", name: "ライチュウ" }, { no: "026", name: "ライチュウ(アローラ)" },
+      { no: "036", name: "ピクシー" }, { no: "036", name: "メガピクシー" },
+      { no: "038", name: "キュウコン" }, { no: "038", name: "キュウコン(アローラ)" },
+      { no: "059", name: "ウインディ" }, { no: "059", name: "ウインディ(ヒスイ)" },
+      { no: "065", name: "フーディン" }, { no: "065", name: "メガフーディン" },
+      { no: "068", name: "カイリキー" }, { no: "071", name: "ウツボット" }, { no: "071", name: "メガウツボット" },
+      { no: "080", name: "ヤドラン" }, { no: "080", name: "メガヤドラン" }, { no: "080", name: "ヤドラン(ガラル)" },
+      { no: "094", name: "ゲンガー" }, { no: "094", name: "メガゲンガー" },
+      { no: "115", name: "ガルーラ" }, { no: "115", name: "メガガルーラ" },
+      { no: "121", name: "スターミー" }, { no: "121", name: "メガスターミー" },
+      { no: "127", name: "カイロス" }, { no: "127", name: "メガカイロス" },
+      { no: "128", name: "ケンタロス" }, { no: "128", name: "ケンタロス(パルデア単)" }, { no: "128", name: "ケンタロス(パルデア炎)" }, { no: "128", name: "ケンタロス(パルデア水)" },
+      { no: "130", name: "ギャラドス" }, { no: "130", name: "メガギャラドス" },
+      { no: "132", name: "メタモン" }, { no: "134", name: "シャワーズ" }, { no: "135", name: "サンダース" }, { no: "136", name: "ブースター" },
+      { no: "142", name: "プテラ" }, { no: "142", name: "メガプテラ" },
+      { no: "143", name: "カビゴン" }, { no: "149", name: "カイリュー" }, { no: "149", name: "メガカイリュー" },
+      { no: "154", name: "メガニウム" }, { no: "154", name: "メガメガニウム" },
+      { no: "157", name: "バクフーン" }, { no: "157", name: "バクフーン(ヒスイ)" },
+      { no: "160", name: "オーダイル" }, { no: "160", name: "メガオーダイル" },
+      { no: "168", name: "アリアドス" }, { no: "181", name: "デンリュウ" }, { no: "181", name: "メガデンリュウ" },
+      { no: "184", name: "マリルリ" }, { no: "186", name: "ニョロトノ" },
+      { no: "196", name: "エーフィ" }, { no: "197", name: "ブラッキー" },
+      { no: "199", name: "ヤドキング" }, { no: "199", name: "ヤドキング(ガラル)" },
+      { no: "205", name: "フォレトス" }, { no: "208", name: "ハガネール" }, { no: "208", name: "メガハガネール" },
+      { no: "212", name: "ハッサム" }, { no: "212", name: "メガハッサム" },
+      { no: "214", name: "ヘラクロス" }, { no: "214", name: "メガヘラクロス" },
+      { no: "227", name: "エアームド" }, { no: "227", name: "メガエアームド" },
+      { no: "229", name: "ヘルガー" }, { no: "229", name: "メガヘルガー" },
+      { no: "248", name: "バンギラス" }, { no: "248", name: "メガバンギラス" },
+      { no: "279", name: "ペリッパー" }, { no: "282", name: "サーナイト" }, { no: "282", name: "メガサーナイト" },
+      { no: "302", name: "ヤミラミ" }, { no: "302", name: "メガヤミラミ" },
+      { no: "306", name: "ボスゴドラ" }, { no: "306", name: "メガボスゴドラ" },
+      { no: "308", name: "チャーレム" }, { no: "308", name: "メガチャーレム" },
+      { no: "310", name: "ライボルト" }, { no: "310", name: "メガライボルト" },
+      { no: "319", name: "サメハダー" }, { no: "319", name: "メガサメハダー" },
+      { no: "323", name: "バクーダ" }, { no: "323", name: "メガバクーダ" },
+      { no: "324", name: "コータス" }, { no: "334", name: "チルタリス" }, { no: "334", name: "メガチルタリス" },
+      { no: "350", name: "ミロカロス" }, { no: "351", name: "ポワルン" },
+      { no: "354", name: "ジュペッタ" }, { no: "354", name: "メガジュペッタ" },
+      { no: "358", name: "チリーン" }, { no: "358", name: "メガチリーン" },
+      { no: "359", name: "アブソル" }, { no: "359", name: "メガアブソル" },
+      { no: "362", name: "オニゴーリ" }, { no: "362", name: "メガオニゴーリ" },
+      { no: "389", name: "ドダイトス" }, { no: "392", name: "ゴウカザル" }, { no: "395", name: "エンペルト" },
+      { no: "405", name: "レントラー" }, { no: "407", name: "ロズレイド" },
+      { no: "409", name: "ラムパルド" }, { no: "411", name: "トリデプス" },
+      { no: "428", name: "ミミロップ" }, { no: "428", name: "メガミミロップ" },
+      { no: "442", name: "ミカルゲ" }, { no: "445", name: "ガブリアス" }, { no: "445", name: "メガガブリアス" },
+      { no: "448", name: "ルカリオ" }, { no: "448", name: "メガルカリオ" },
+      { no: "450", name: "カバルドン" }, { no: "454", name: "ドクロッグ" },
+      { no: "460", name: "ユキノオー" }, { no: "460", name: "メガユキノオー" },
+      { no: "461", name: "マニューラ" }, { no: "464", name: "ドサイドン" },
+      { no: "470", name: "リーフィア" }, { no: "471", name: "グレイシア" },
+      { no: "472", name: "グライオン" }, { no: "473", name: "マンムー" },
+      { no: "475", name: "エルレイド" }, { no: "475", name: "メガエルレイド" },
+      { no: "478", name: "ユキメノコ" }, { no: "478", name: "メガユキメノコ" },
+      { no: "479", name: "ロトム" }, { no: "479", name: "ヒートロトム" }, { no: "479", name: "ウォッシュロトム" }, { no: "479", name: "フロストロトム" }, { no: "479", name: "スピンロトム" }, { no: "479", name: "カットロトム" },
+      { no: "497", name: "ジャローダ" }, { no: "500", name: "エンブオー" }, { no: "500", name: "メガエンブオー" },
+      { no: "503", name: "ダイケンキ" }, { no: "503", name: "ダイケンキ(ヒスイ)" },
+      { no: "505", name: "ミルホッグ" }, { no: "510", name: "レパルダス" },
+      { no: "512", name: "ヤナッキー" }, { no: "514", name: "バオッキー" }, { no: "516", name: "ヒヤッキー" },
+      { no: "530", name: "ドリュウズ" }, { no: "530", name: "メガドリュウズ" },
+      { no: "531", name: "タブンネ" }, { no: "531", name: "メガタブンネ" },
+      { no: "534", name: "ローブシン" }, { no: "547", name: "エルフーン" },
+      { no: "553", name: "ワルビアル" }, { no: "563", name: "デスカーン" },
+      { no: "569", name: "ダストダス" }, { no: "571", name: "ゾロアーク" }, { no: "571", name: "ゾロアーク(ヒスイ)" },
+      { no: "579", name: "ランクルス" }, { no: "584", name: "バイバニラ" },
+      { no: "587", name: "エモンガ" }, { no: "609", name: "シャンデラ" }, { no: "609", name: "メガシャンデラ" },
+      { no: "614", name: "ツンベアー" }, { no: "618", name: "マッギョ" }, { no: "618", name: "マッギョ(ガラル)" },
+      { no: "623", name: "ゴルーグ" }, { no: "623", name: "メガゴルーグ" },
+      { no: "635", name: "サザンドラ" }, { no: "637", name: "ウルガモス" },
+      { no: "652", name: "ブリガロン" }, { no: "652", name: "メガブリガロン" },
+      { no: "655", name: "マフォクシー" }, { no: "655", name: "メガマフォクシー" },
+      { no: "658", name: "ゲッコウガ" }, { no: "658", name: "メガゲッコウガ" },
+      { no: "660", name: "ホルード" }, { no: "663", name: "ファイアロー" },
+      { no: "666", name: "ビビヨン" }, { no: "670", name: "フラエッテ(えいえん)" }, { no: "670", name: "メガフラエッテ" }, { no: "671", name: "フラージェス" },
+      { no: "675", name: "ゴロンダ" }, { no: "676", name: "トリミアン" },
+      { no: "678", name: "ニャオニクス♂" }, { no: "678", name: "ニャオニクス♀" }, { no: "678", name: "メガニャオニクス♂" }, { no: "678", name: "メガニャオニクス♀" },
+      { no: "681", name: "ギルガルド(シールド)" }, { no: "681", name: "ギルガルド(ブレード)" },
+      { no: "683", name: "フレフワン" }, { no: "685", name: "ペロリーム" },
+      { no: "693", name: "ブロスター" }, { no: "695", name: "エレザード" },
+      { no: "697", name: "ガチゴラス" }, { no: "699", name: "アマルルガ" },
+      { no: "700", name: "ニンフィア" }, { no: "701", name: "ルチャブル" }, { no: "701", name: "メガルチャブル" },
+      { no: "702", name: "デデンネ" }, { no: "706", name: "ヌメルゴン" }, { no: "706", name: "ヌメルゴン(ヒスイ)" },
+      { no: "707", name: "クレッフィ" }, { no: "709", name: "オーロット" },
+      { no: "711", name: "パンプジン(普通)" }, { no: "711", name: "パンプジン(小)" }, { no: "711", name: "パンプジン(大)" }, { no: "711", name: "パンプジン(特大)" },
+      { no: "713", name: "クレベース" }, { no: "713", name: "クレベース(ヒスイ)" },
+      { no: "715", name: "オンバーン" }, { no: "724", name: "ジュナイパー" }, { no: "724", name: "ジュナイパー(ヒスイ)" },
+      { no: "727", name: "ガオガエン" }, { no: "730", name: "アシレーヌ" },
+      { no: "733", name: "ドデカバシ" }, { no: "740", name: "ケケンカニ" }, { no: "740", name: "メガケケンカニ" },
+      { no: "745", name: "ルガルガン(まひる)" }, { no: "745", name: "ルガルガン(まよなか)" }, { no: "745", name: "ルガルガン(たそがれ)" },
+      { no: "748", name: "ドヒドイデ" }, { no: "750", name: "バンバドロ" },
+      { no: "752", name: "オニシズクモ" }, { no: "758", name: "エンニュート" },
+      { no: "763", name: "アマージョ" }, { no: "765", name: "ヤレユータン" },
+      { no: "766", name: "ナゲツケサル" }, { no: "778", name: "ミミッキュ" },
+      { no: "780", name: "ジジーロン" }, { no: "780", name: "メガジジーロン" },
+      { no: "784", name: "ジャラランガ" }, { no: "823", name: "アーマーガア" },
+      { no: "841", name: "アップリュー" }, { no: "842", name: "タルップル" },
+      { no: "844", name: "サダイジャ" }, { no: "855", name: "ポットデス" },
+      { no: "858", name: "ブリムオン" }, { no: "866", name: "バリコオル" },
+      { no: "867", name: "デスバーン" }, { no: "869", name: "マホイップ" },
+      { no: "877", name: "モルペコ" }, { no: "887", name: "ドラパルト" },
+      { no: "899", name: "アヤシシ" }, { no: "900", name: "バサギリ" },
+      { no: "902", name: "イダイトウ♂" }, { no: "902", name: "イダイトウ♀" },
+      { no: "903", name: "オオニューラ" }, { no: "908", name: "マスカーニャ" },
+      { no: "911", name: "ラウドボーン" }, { no: "914", name: "ウェーニバル" },
+      { no: "925", name: "イッカネズミ" }, { no: "934", name: "キョジオーン" },
+      { no: "936", name: "グレンアルマ" }, { no: "937", name: "ソウブレイズ" },
+      { no: "939", name: "ハラバリー" }, { no: "952", name: "スコヴィラン" }, { no: "952", name: "メガスコヴィラン" },
+      { no: "956", name: "クエスパトラ" }, { no: "959", name: "デカヌチャン" },
+      { no: "964", name: "イルカマン(ナイーブ)" }, { no: "964", name: "イルカマン(マイティ)" },
+      { no: "968", name: "ミミズズ" }, { no: "970", name: "キラフロル" }, { no: "970", name: "メガキラフロル" },
+      { no: "981", name: "リキキリン" }, { no: "983", name: "ドドゲザン" },
+      { no: "1013", name: "ヤバソチャ" }, { no: "1018", name: "ブリジュラス" }, { no: "1019", name: "カミツオロチ" }
+    ];
+
+    // === 設定・定数 ===
+    const CONFIG = {
+      SPIN_INTERVAL_MS: 50, // ルーレットの回転速度（ミリ秒）
+      MESSAGE_DISPLAY_MS: 3000, // メッセージの表示時間（ミリ秒）
+      MEGA_EXCEPTIONS: ["メガニウム", "メガヤンマ"], // 「メガ」から始まるが除外しないポケモン
+      EXCLUDE_FORMS: ["イルカマン(マイティ)", "ギルガルド(ブレード)"], // 戦闘中のみフォルムが変わるため除外するポケモン
+      RENAME_FORMS: {
+        "イルカマン(ナイーブ)": "イルカマン",
+        "ギルガルド(シールド)": "ギルガルド"
+      }, // 通常の姿の表示名をシンプルにするための置き換えリスト
+      FORM_IMAGE_MAP: {
+        "ライチュウ(アローラ)": "10100",
+        "キュウコン(アローラ)": "10104",
+        "ウインディ(ヒスイ)": "10230",
+        "ヤドラン(ガラル)": "10167",
+        "ケンタロス(パルデア単)": "10250",
+        "ケンタロス(パルデア炎)": "10251",
+        "ケンタロス(パルデア水)": "10252",
+        "バクフーン(ヒスイ)": "10233",
+        "ヤドキング(ガラル)": "10172",
+        "ダイケンキ(ヒスイ)": "10236",
+        "ゾロアーク(ヒスイ)": "10239",
+        "マッギョ(ガラル)": "10180",
+        "フラエッテ(えいえん)": "10061",
+        "ニャオニクス♀": "10025",
+        "ヌメルゴン(ヒスイ)": "10242",
+        "パンプジン(小)": "10027",
+        "パンプジン(大)": "10028",
+        "パンプジン(特大)": "10029",
+        "クレベース(ヒスイ)": "10243",
+        "ジュナイパー(ヒスイ)": "10244",
+        "ルガルガン(まよなか)": "10126",
+        "ルガルガン(たそがれ)": "10127",
+        "イダイトウ♀": "10248",
+        "ヒートロトム": "10008",
+        "ウォッシュロトム": "10009",
+        "フロストロトム": "10010",
+        "スピンロトム": "10011",
+        "カットロトム": "10012"
+      }, // フォルム違いのポケモンに対応するPokeAPIの画像ID
+      MEGA_IMAGE_MAP: {
+        "メガフシギバナ": "10033",
+        "メガリザードンX": "10034",
+        "メガリザードンY": "10035",
+        "メガカメックス": "10036",
+        "メガスピアー": "10089",
+        "メガピジョット": "10073",
+        "メガフーディン": "10037",
+        "メガヤドラン": "10071",
+        "メガゲンガー": "10038",
+        "メガガルーラ": "10039",
+        "メガカイロス": "10040",
+        "メガギャラドス": "10041",
+        "メガプテラ": "10042",
+        "メガデンリュウ": "10045",
+        "メガハガネール": "10072",
+        "メガハッサム": "10046",
+        "メガヘラクロス": "10047",
+        "メガヘルガー": "10048",
+        "メガバンギラス": "10049",
+        "メガサーナイト": "10051",
+        "メガヤミラミ": "10066",
+        "メガボスゴドラ": "10053",
+        "メガチャーレム": "10054",
+        "メガライボルト": "10055",
+        "メガサメハダー": "10070",
+        "メガバクーダ": "10086",
+        "メガチルタリス": "10067",
+        "メガジュペッタ": "10056",
+        "メガアブソル": "10057",
+        "メガオニゴーリ": "10074",
+        "メガミミロップ": "10087",
+        "メガガブリアス": "10058",
+        "メガルカリオ": "10059",
+        "メガユキノオー": "10060",
+        "メガエルレイド": "10068",
+        "メガタブンネ": "10069"
+      } // 公式メガシンカポケモンに対応する正確なPokeAPIの画像ID
+    };
+
+    // === 状態管理 ===
+    const state = {
+      rawPokemonList: [], // メガシンカ等も全て含むパース直後のリスト
+      pokemonList: [],    // ルーレットの抽選対象リスト（メガ除外等）
+      isSpinning: false,
+      spinIntervalId: null
+    };
+
+    // === DOM要素の取得 ===
+    const DOM = {
+      resultNo: document.getElementById('resultNo'),
+      resultName: document.getElementById('resultName'),
+      imageWrapper: document.getElementById('imageWrapper'),
+      actionBtn: document.getElementById('actionBtn'),
+      pokemonInput: document.getElementById('pokemonInput'),
+      pokemonCount: document.getElementById('pokemonCount'),
+      pokemonTags: document.getElementById('pokemonTags'),
+      updateListBtn: document.getElementById('updateListBtn'),
+      updateMessage: document.getElementById('updateMessage'),
+      theoryLinkWrapper: document.getElementById('theoryLinkWrapper'),
+      theoryLink: document.getElementById('theoryLink'),
+      resetBtn: document.getElementById('resetBtn'),
+      clearBtn: document.getElementById('clearBtn')
+    };
+
+    // === データ処理ロジック ===
+
+    /**
+     * テキストエリアの文字列を解析し、図鑑番号と名前のオブジェクト配列に変換する
+     */
+    function parseInputText(text) {
+      const lines = text.split('\n').map(line => line.trim()).filter(line => line !== '');
+      const rawList = [];
+      let currentNo = "???";
+
+      for (const line of lines) {
+        if (/^(?:No\.?\s*)?(\d+):?$/i.test(line)) {
+          currentNo = line.replace(/^(?:No\.?\s*)?/i, '').replace(':', ''); 
+        } else if (/^(?:No\.?\s*)?(\d+)[：:\s　]+(.+)$/i.test(line)) {
+          const match = line.match(/^(?:No\.?\s*)?(\d+)[：:\s　]+(.+)$/i);
+          currentNo = match[1];
+          rawList.push({ no: currentNo, name: match[2].trim() });
+        } else {
+          rawList.push({ no: currentNo, name: line });
+        }
+      }
+      return rawList;
+    }
+
+    /**
+     * リストからメガシンカ等を除外し、ルーレット用のリストを生成する
+     */
+    function filterPokemonList(rawList) {
+      const filtered = [];
+      for (const p of rawList) {
+        if (p.name.startsWith("メガ") && !CONFIG.MEGA_EXCEPTIONS.includes(p.name)) continue;
+        if (CONFIG.EXCLUDE_FORMS.includes(p.name)) continue;
+
+        const displayName = CONFIG.RENAME_FORMS[p.name] || p.name;
+        filtered.push({ no: p.no, name: displayName });
+      }
+      return filtered;
+    }
+
+    // === UI操作ロジック ===
+
+    /**
+     * 画像表示用のHTML要素（文字列）を生成するヘルパー関数
+     */
+    function createPokemonImageHTML(name, imgUrl, isOfficial) {
+      let imgElement = '';
+      
+      if (isOfficial && imgUrl) {
+        imgElement = `<img src="${imgUrl}" alt="${name}" class="w-24 h-24 sm:w-32 sm:h-32 object-contain drop-shadow-xl animate-fade-in">`;
+      } else {
+        // 非公式メガシンカ等、画像が存在しない場合の代替アイコン
+        imgElement = `
+          <div class="w-20 h-20 sm:w-28 sm:h-28 bg-slate-200 rounded-full flex flex-col items-center justify-center text-slate-400 drop-shadow-md animate-fade-in border-4 border-slate-100 mx-auto">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span class="text-[9px] font-bold">NO IMAGE</span>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="flex flex-col items-center w-24 sm:w-32">
+          ${imgElement}
+          <span class="text-xs sm:text-sm text-slate-500 font-bold mt-2 text-center break-words leading-tight animate-fade-in">${name}</span>
+        </div>
+      `;
+    }
+
+    /**
+     * ルーレットの結果表示領域を更新する
+     */
+    function updateResultDisplay(pokemon, isSpinning) {
+      DOM.resultNo.textContent = `No.${pokemon.no}`;
+      DOM.resultName.textContent = pokemon.name;
+
+      if (isSpinning) {
+        DOM.resultName.classList.add('spinning');
+        DOM.resultName.classList.remove('text-blue-600', 'scale-110', 'transition-transform', 'duration-300');
+        DOM.resultNo.classList.remove('text-blue-500');
+        
+        // リンクを隠す（invisibleに変更してスペースを維持）
+        DOM.theoryLinkWrapper.classList.add('invisible');
+        DOM.theoryLinkWrapper.classList.remove('opacity-100');
+
+        // 画像領域を「？」のみにする
+        DOM.imageWrapper.innerHTML = `
+          <div class="flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 bg-slate-200 rounded-full text-4xl text-slate-400 font-bold shadow-inner">
+            ?
+          </div>
+        `;
+
+      } else {
+        DOM.resultName.classList.remove('spinning');
+        DOM.resultName.classList.add('text-blue-600', 'scale-110', 'transition-transform', 'duration-300');
+        DOM.resultNo.classList.add('text-blue-500');
+        
+        // --- 育成論リンクの処理 ---
+        const noNumber = parseInt(pokemon.no, 10);
+        DOM.theoryLink.href = `https://yakkun.com/sv/theory/p${noNumber}`;
+        
+        // リンクを表示する
+        DOM.theoryLinkWrapper.classList.remove('invisible');
+        setTimeout(() => {
+          DOM.theoryLinkWrapper.classList.add('opacity-100');
+        }, 50);
+
+        // --- 画像の表示処理 (メガシンカ並列展開) ---
+        DOM.imageWrapper.innerHTML = '';
+        
+        // 1. 通常のポケモン画像HTMLを生成
+        const normalImageId = CONFIG.FORM_IMAGE_MAP[pokemon.name] || noNumber;
+        const normalImgUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${normalImageId}.png`;
+        let html = createPokemonImageHTML(pokemon.name, normalImgUrl, true);
+
+        // 2. 元のリストから関連するメガシンカを探す
+        const relatedMegas = state.rawPokemonList.filter(p => {
+          return p.no === pokemon.no && p.name.startsWith("メガ") && !CONFIG.MEGA_EXCEPTIONS.includes(p.name);
+        });
+
+        // 重複を除去してメガシンカ画像HTMLを追加
+        const uniqueMegas = Array.from(new Set(relatedMegas.map(m => m.name))).map(name => relatedMegas.find(m => m.name === name));
+        
+        uniqueMegas.forEach(mega => {
+          const megaImageId = CONFIG.MEGA_IMAGE_MAP[mega.name];
+          if (megaImageId) {
+            // 公式に存在するメガシンカ画像
+            const megaImgUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${megaImageId}.png`;
+            html += createPokemonImageHTML(mega.name, megaImgUrl, true);
+          } else {
+            // 非公式のメガシンカ（オリジナル）等で画像がない場合
+            html += createPokemonImageHTML(mega.name, null, false);
+          }
+        });
+
+        DOM.imageWrapper.innerHTML = html;
+      }
+    }
+
+    /**
+     * スタート/ストップボタンの表示・非表示を切り替える
+     */
+    function toggleButtons(isSpinning) {
+      if (isSpinning) {
+        DOM.actionBtn.textContent = 'ストップ！';
+        DOM.actionBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        DOM.actionBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+      } else {
+        DOM.actionBtn.textContent = 'スタート！';
+        DOM.actionBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+        DOM.actionBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+      }
+    }
+
+    /**
+     * テキストエリアと登録件数、タグの表示を更新する
+     */
+    function updateListUI() {
+      DOM.pokemonCount.textContent = state.pokemonList.length;
+      
+      DOM.pokemonInput.value = state.rawPokemonList.map(p => `${p.no} ${p.name}`).join('\n');
+      
+      DOM.pokemonTags.innerHTML = '';
+      if (state.pokemonList.length === 0) {
+        DOM.pokemonTags.innerHTML = '<span class="text-sm text-slate-400 py-2">ポケモンが登録されていません</span>';
+      } else {
+        const fragment = document.createDocumentFragment();
+        state.pokemonList.forEach((p, index) => {
+          const tag = document.createElement('span');
+          tag.className = 'inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 bg-white border border-slate-200 rounded-full text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300';
+          
+          tag.innerHTML = `
+            <span class="text-slate-400 font-normal">No.${p.no}</span>
+            ${p.name}
+            <button data-index="${index}" class="ml-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full p-0.5 transition-colors focus:outline-none" title="削除">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </button>
+          `;
+          fragment.appendChild(tag);
+        });
+        DOM.pokemonTags.appendChild(fragment);
+      }
+    }
+
+    /**
+     * リスト更新成功メッセージを一時的に表示する
+     */
+    function showUpdateSuccessMessage() {
+      DOM.updateMessage.classList.remove('opacity-0');
+      DOM.updateMessage.classList.add('opacity-100');
+      setTimeout(() => {
+        DOM.updateMessage.classList.remove('opacity-100');
+        DOM.updateMessage.classList.add('opacity-0');
+      }, CONFIG.MESSAGE_DISPLAY_MS);
+    }
+
+    /**
+     * 現在のリストからランダムに1匹ポケモンを取得する
+     */
+     function getRandomPokemon() {
+      const randomIndex = Math.floor(Math.random() * state.pokemonList.length);
+      return state.pokemonList[randomIndex];
+    }
+
+    // === イベントハンドラ ===
+
+    // スタート/ストップの振り分け処理
+    function handleAction() {
+      if (state.isSpinning) {
+        handleStop();
+      } else {
+        handleStart();
+      }
+    }
+
+    function handleUpdateList() {
+      const rawList = parseInputText(DOM.pokemonInput.value);
+      
+      if (rawList.length === 0) {
+        alert('ポケモンのデータが読み込めませんでした。入力内容を確認してください。');
+        return;
+      }
+
+      state.rawPokemonList = rawList;
+      state.pokemonList = filterPokemonList(rawList);
+      updateListUI();
+      showUpdateSuccessMessage();
+    }
+
+    function handleResetList() {
+      if (confirm('リストを最初の状態（デフォルト）に戻しますか？')) {
+        state.rawPokemonList = [...defaultPokemon];
+        state.pokemonList = filterPokemonList(defaultPokemon);
+        updateListUI();
+      }
+    }
+
+    function handleClearList() {
+      if (confirm('リストのポケモンをすべて削除しますか？')) {
+        state.rawPokemonList = [];
+        state.pokemonList = [];
+        updateListUI();
+      }
+    }
+
+    function handleRemoveTag(e) {
+      const btn = e.target.closest('button[data-index]');
+      if (btn) {
+        const index = parseInt(btn.dataset.index, 10);
+        // rawPokemonListから対象の番号のポケモンをすべて削除するとメガも消えてしまうので、対象の通常種だけを消す
+        const removedPokemon = state.pokemonList[index];
+        state.pokemonList.splice(index, 1);
+        
+        // rawPokemonList側からも同期して削除 (図鑑番号が一致するものをごっそり消す)
+        state.rawPokemonList = state.rawPokemonList.filter(p => p.no !== removedPokemon.no);
+        
+        updateListUI();
+      }
+    }
+
+    function handleStart() {
+      if (state.pokemonList.length === 0) {
+        alert('リストにポケモンがいません！設定から追加してください。');
+        return;
+      }
+
+      state.isSpinning = true;
+      toggleButtons(true);
+
+      state.spinIntervalId = setInterval(() => {
+        updateResultDisplay(getRandomPokemon(), true);
+      }, CONFIG.SPIN_INTERVAL_MS);
+    }
+
+    function handleStop() {
+      if (!state.isSpinning) return;
+      
+      state.isSpinning = false;
+      clearInterval(state.spinIntervalId);
+      
+      updateResultDisplay(getRandomPokemon(), false);
+      toggleButtons(false);
+    }
+
+    // === アプリケーション初期化 ===
+
+    function init() {
+      state.rawPokemonList = [...defaultPokemon];
+      state.pokemonList = filterPokemonList(defaultPokemon);
+      updateListUI();
+
+      DOM.updateListBtn.addEventListener('click', handleUpdateList);
+      DOM.actionBtn.addEventListener('click', handleAction);
+      DOM.resetBtn.addEventListener('click', handleResetList);
+      DOM.clearBtn.addEventListener('click', handleClearList);
+      DOM.pokemonTags.addEventListener('click', handleRemoveTag);
+    }
+
+    init();
+
+  </script>
+</body>
+</html>
